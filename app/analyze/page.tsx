@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { ArrowLeft, Upload, Download, ArrowUpDown, Search, ChevronLeft, ChevronRight } from "lucide-react"
 import Link from "next/link"
+import LiquidEther from "@/components/LiquidEther"
 
 type TransactionData = {
   TransactionID: number
@@ -223,7 +224,30 @@ export default function AnalyzePage() {
   }
 
   return (
-    <div className="dark min-h-screen bg-background text-foreground">
+    <div className="dark min-h-screen bg-background text-foreground relative">
+      {/* LiquidEther Background - Full Page */}
+      <div className="fixed inset-0 w-full h-full z-0">
+        <LiquidEther
+          colors={["#5227FF", "#FF9FFC", "#B19EEF"]}
+          mouseForce={20}
+          cursorSize={100}
+          isViscous={false}
+          viscous={30}
+          iterationsViscous={32}
+          iterationsPoisson={32}
+          resolution={0.5}
+          isBounce={false}
+          autoDemo={true}
+          autoSpeed={0.5}
+          autoIntensity={2.2}
+          takeoverDuration={0.25}
+          autoResumeDelay={0}
+          autoRampDuration={0.6}
+        />
+      </div>
+
+      {/* Page Content */}
+      <div className="relative z-10">
       <div className="fixed left-4 top-4 z-50">
         <Link href="/">
           <Button variant="outline" size="sm">
@@ -234,7 +258,7 @@ export default function AnalyzePage() {
       </div>
 
       <div className="mx-auto max-w-7xl px-4 py-12">
-        <h1 className="mb-8 text-center text-4xl font-bold md:text-5xl">Fraud Detection Analysis</h1>
+        <h1 className="mb-8 text-center text-4xl font-bold md:text-5xl bg-gradient-to-b from-white/90 via-white/70 to-purple-500 bg-clip-text text-transparent">Fraud Detection Analysis</h1>
 
         <Card className="mb-8">
           <CardHeader>
@@ -440,6 +464,7 @@ export default function AnalyzePage() {
           </>
         )}
       </div>
+    </div>
     </div>
   )
 }

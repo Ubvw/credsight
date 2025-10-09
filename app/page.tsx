@@ -25,7 +25,7 @@ export default function Home() {
           iterationsViscous={32}
           iterationsPoisson={32}
           resolution={0.5}
-          isBounce={false}
+          isBounce={true}
           autoDemo={true}
           autoSpeed={0.5}
           autoIntensity={2.2}
@@ -149,10 +149,10 @@ export default function Home() {
               handle="xxxxx"
               status="xxxxx"
               contactText="xxxxx"
-              avatarUrl="https://i.pravatar.cc/300?img=1"
+              avatarUrl="/alvin.jpg"
               showUserInfo={false}
-              enableTilt={false}
-              enableMobileTilt={false}
+              enableTilt={true}
+              enableMobileTilt={true}
               onContactClick={() => console.log('Contact clicked: Javi')}
               />
               </div>
@@ -165,10 +165,10 @@ export default function Home() {
               handle="alex-ml"
               status="Available"
               contactText="Reach Out"
-              avatarUrl="https://i.pravatar.cc/300?img=2"
+              avatarUrl="/mark.jpeg"
               showUserInfo={false}
-              enableTilt={false}
-              enableMobileTilt={false}
+              enableTilt={true}
+              enableMobileTilt={true}
               onContactClick={() => console.log('Contact clicked: Alex')}
               />
               </div>
@@ -181,10 +181,10 @@ export default function Home() {
               handle="priya-data"
               status="Online"
               contactText="Say Hi"
-              avatarUrl="https://i.pravatar.cc/300?img=3"
+              avatarUrl="/david.jpeg"
               showUserInfo={false}
-              enableTilt={false}
-              enableMobileTilt={false}
+              enableTilt={true}
+              enableMobileTilt={true}
               onContactClick={() => console.log('Contact clicked: Priya')}
               />
               </div>
@@ -197,10 +197,10 @@ export default function Home() {
               handle="marco-designs"
               status="Busy"
               contactText="Connect"
-              avatarUrl="https://i.pravatar.cc/300?img=4"
+              avatarUrl="/asi.jpg"
               showUserInfo={false}
-              enableTilt={false}
-              enableMobileTilt={false}
+              enableTilt={true}
+              enableMobileTilt={true}
               onContactClick={() => console.log('Contact clicked: Marco')}
               />
               </div>
@@ -213,10 +213,10 @@ export default function Home() {
               handle="sarakim"
               status="Online"
               contactText="Contact"
-              avatarUrl="https://i.pravatar.cc/300?img=5"
+              avatarUrl="/marcox.jpeg"
               showUserInfo={false}
-              enableTilt={false}
-              enableMobileTilt={false}
+              enableTilt={true}
+              enableMobileTilt={true}
               onContactClick={() => console.log('Contact clicked: Sara')}
               />
               </div>
