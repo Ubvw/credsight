@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Upload, Download, ArrowUpDown, Search, ChevronLeft, ChevronRight, Info } from "lucide-react"
+import { ArrowLeft, Upload, Download, ArrowUpDown, Search, ChevronLeft, ChevronRight, Info, HelpCircle, Expand } from "lucide-react"
 import Link from "next/link"
 import LiquidEther from "@/components/LiquidEther"
 import ModelEvaluationPlaceholder from "@/components/ModelEvaluationPlaceholder"
@@ -18,7 +18,7 @@ import ExplanationModal from "@/components/ExplanationModal"
 
 type TransactionData = {
   TransactionID: number
-  TrueLabel: number
+  TrueLabel?: number
   RGCN?: number
   ERGCN?: number
 }
@@ -74,6 +74,8 @@ export default function AnalyzePage() {
   const [isLoadingExplanation, setIsLoadingExplanation] = useState(false)
   const [isProcessingFile, setIsProcessingFile] = useState(false)
   const [processingProgress, setProcessingProgress] = useState(0)
+  const [hasGroundTruth, setHasGroundTruth] = useState(true)
+  const [hasUploadedCSV, setHasUploadedCSV] = useState(false)
 
   const analyzeWithModels = async (transactions: TransactionData[]) => {
     setIsAnalyzing(true)
@@ -105,8 +107,11 @@ export default function AnalyzePage() {
 
     // Check file size and warn for large files
     const fileSizeMB = file.size / (1024 * 1024)
-    if (fileSizeMB > 100) {
-      const proceed = confirm(`Large file detected (${fileSizeMB.toFixed(1)}MB). Processing may take several minutes. Continue?`)
+    if (fileSizeMB > 800) {
+      alert(`File too large (${fileSizeMB.toFixed(1)}MB). Maximum supported size is 800MB. Please split your file or use a smaller sample.`)
+      return
+    } else if (fileSizeMB > 100) {
+      const proceed = confirm(`Large file detected (${fileSizeMB.toFixed(1)}MB). Processing may take several minutes and could cause browser slowdown. Continue?`)
       if (!proceed) return
     }
 
@@ -136,16 +141,19 @@ export default function AnalyzePage() {
         const transactionIdIndex = headers.findIndex((h) => h.toLowerCase().includes("transactionid"))
         const isFraudIndex = headers.findIndex((h) => h.toLowerCase().includes("isfraud") || h.toLowerCase().includes("truelabel"))
 
-        if (transactionIdIndex === -1 || isFraudIndex === -1) {
-          alert("CSV must contain TransactionID and isFraud/TrueLabel columns")
+        if (transactionIdIndex === -1) {
+          alert("CSV must contain TransactionID column")
           setIsProcessingFile(false)
           return
         }
 
+        const hasGroundTruthData = isFraudIndex !== -1
+        setHasGroundTruth(hasGroundTruthData)
+
         setProcessingProgress(50)
         
         // Use smaller chunk size for large files
-        const chunkSize = fileSizeMB > 200 ? 500 : 1000
+        const chunkSize = fileSizeMB > 800 ? 200 : fileSizeMB > 400 ? 500 : 1000
         const parsedData: TransactionData[] = []
         const totalRows = lines.length - 1
         
@@ -158,10 +166,15 @@ export default function AnalyzePage() {
             .map((row) => {
               try {
                 const values = row.split(',').map(v => v.trim())
-                return {
+                const transaction: TransactionData = {
                   TransactionID: Number.parseInt(values[transactionIdIndex]) || 0,
-                  TrueLabel: values[isFraudIndex]?.toLowerCase() === "true" || values[isFraudIndex] === "1" ? 1 : 0,
                 }
+                
+                if (hasGroundTruthData) {
+                  transaction.TrueLabel = values[isFraudIndex]?.toLowerCase() === "true" || values[isFraudIndex] === "1" ? 1 : 0
+                }
+                
+                return transaction
               } catch {
                 return null
               }
@@ -175,7 +188,7 @@ export default function AnalyzePage() {
           setProcessingProgress(Math.min(progress, 90))
           
           // Longer delay for large files to prevent browser freeze
-          const delay = fileSizeMB > 200 ? 50 : 20
+          const delay = fileSizeMB > 800 ? 100 : fileSizeMB > 400 ? 50 : 20
           await new Promise(resolve => setTimeout(resolve, delay))
         }
 
@@ -183,13 +196,14 @@ export default function AnalyzePage() {
         
         // Limit data for frontend performance (sample if too large)
         let finalData = parsedData
-        if (parsedData.length > 100000) {
-          const sampleSize = 50000
+        if (parsedData.length > 800000) {
+          const sampleSize = 100000
           const step = Math.floor(parsedData.length / sampleSize)
           finalData = parsedData.filter((_, index) => index % step === 0).slice(0, sampleSize)
           alert(`Dataset too large (${parsedData.length} rows). Showing sample of ${finalData.length} transactions.`)
         }
         
+        setHasUploadedCSV(true)
         await analyzeWithModels(finalData)
         
       } catch (error) {
@@ -234,9 +248,9 @@ export default function AnalyzePage() {
   const applyFiltersAndSearch = useCallback(() => {
     let result = [...data]
 
-    if (filterType === "legit") {
+    if (filterType === "legit" && hasGroundTruth) {
       result = result.filter((item) => item.TrueLabel === 0)
-    } else if (filterType === "fraud") {
+    } else if (filterType === "fraud" && hasGroundTruth) {
       result = result.filter((item) => item.TrueLabel === 1)
     } else if (filterType === "both_correct" && analysisResult) {
       result = result.filter((item) => 
@@ -276,7 +290,7 @@ export default function AnalyzePage() {
 
     setFilteredData(result)
     setCurrentPage(1)
-  }, [data, filterType, searchQuery, sortConfig, analysisResult])
+  }, [data, filterType, searchQuery, sortConfig, analysisResult, hasGroundTruth])
 
   // Re-apply filters, search, and sort whenever inputs change to avoid stale state issues
   useEffect(() => {
@@ -428,17 +442,27 @@ export default function AnalyzePage() {
 
   const stats = {
     total: filteredData.length,
-    legitimate: filteredData.filter((item) => item.TrueLabel === 0).length,
-    fraud: filteredData.filter((item) => item.TrueLabel === 1).length,
-    fraudRate:
-      filteredData.length > 0
-        ? ((filteredData.filter((item) => item.TrueLabel === 1).length / filteredData.length) * 100).toFixed(2)
-        : "0.00",
-    rgcnAccuracy: analysisResult
+    legitimate: hasGroundTruth ? filteredData.filter((item) => item.TrueLabel === 0).length : null,
+    fraud: hasGroundTruth ? filteredData.filter((item) => item.TrueLabel === 1).length : null,
+    fraudRate: hasGroundTruth && filteredData.length > 0
+      ? ((filteredData.filter((item) => item.TrueLabel === 1).length / filteredData.length) * 100).toFixed(2)
+      : null,
+    rgcnAccuracy: analysisResult && hasGroundTruth
       ? ((filteredData.filter((item) => item.RGCN === item.TrueLabel).length / filteredData.length) * 100).toFixed(2)
       : null,
-    ergcnAccuracy: analysisResult
+    ergcnAccuracy: analysisResult && hasGroundTruth
       ? ((filteredData.filter((item) => item.ERGCN === item.TrueLabel).length / filteredData.length) * 100).toFixed(2)
+      : null,
+    // Model predictions for both protocols
+    rgcnLegitimate: analysisResult ? filteredData.filter((item) => item.RGCN === 0).length : null,
+    rgcnFraud: analysisResult ? filteredData.filter((item) => item.RGCN === 1).length : null,
+    rgcnFraudRate: analysisResult && filteredData.length > 0
+      ? ((filteredData.filter((item) => item.RGCN === 1).length / filteredData.length) * 100).toFixed(2)
+      : null,
+    ergcnLegitimate: analysisResult ? filteredData.filter((item) => item.ERGCN === 0).length : null,
+    ergcnFraud: analysisResult ? filteredData.filter((item) => item.ERGCN === 1).length : null,
+    ergcnFraudRate: analysisResult && filteredData.length > 0
+      ? ((filteredData.filter((item) => item.ERGCN === 1).length / filteredData.length) * 100).toFixed(2)
       : null,
   }
 
@@ -475,17 +499,17 @@ export default function AnalyzePage() {
         </AnimatedCard>
 
         <AnimatedCard>
-          <Card className="mb-8">
+          <Card className={`mb-8 ${!hasUploadedCSV ? 'min-h-[60vh]' : ''}`}>
             <CardHeader>
               <CardTitle>Upload Transaction Data</CardTitle>
-              <CardDescription>Upload a CSV file containing TransactionID and isFraud columns</CardDescription>
+              <CardDescription>Upload a CSV file containing TransactionID column {hasGroundTruth ? 'and isFraud/TrueLabel columns' : '(isFraud column optional)'}</CardDescription>
             </CardHeader>
-          <CardContent>
+          <CardContent className={!hasUploadedCSV ? 'flex-1' : ''}>
             <div
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
-              className={`flex min-h-[200px] cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed transition-colors ${
+              className={`flex ${!hasUploadedCSV ? 'min-h-[50vh]' : 'min-h-[200px]'} cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed transition-colors ${
                 isDragging ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"
               }`}
             >
@@ -519,7 +543,7 @@ export default function AnalyzePage() {
           </Card>
         </AnimatedCard>
 
-        {data.length > 0 && (
+        {hasUploadedCSV && data.length > 0 && (
           <>
             <Card className="bg-transparent border-none mb-[-14px]">
               <CardContent className="pt-6">
@@ -548,9 +572,13 @@ export default function AnalyzePage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">Show All</SelectItem>
-                        <SelectItem value="legit">Legitimate Only</SelectItem>
-                        <SelectItem value="fraud">Fraud Only</SelectItem>
-                        {analysisResult && (
+                        {hasGroundTruth && (
+                          <>
+                            <SelectItem value="legit">Legitimate Only</SelectItem>
+                            <SelectItem value="fraud">Fraud Only</SelectItem>
+                          </>
+                        )}
+                        {analysisResult && hasGroundTruth && (
                           <>
                             <SelectItem value="both_correct">Both Models Correct</SelectItem>
                             <SelectItem value="both_incorrect">Both Models Incorrect</SelectItem>
@@ -591,32 +619,46 @@ export default function AnalyzePage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>
+                        <TableHead className={`text-center ${!hasGroundTruth && analysisResult ? 'w-[25%]' : 'w-[15%]'}`}>
                           <Button
                             variant="ghost"
                             onClick={() => handleSort("TransactionID")}
-                            className="flex items-center gap-2"
+                            className="flex items-center gap-2 mx-auto"
                           >
                             Transaction ID
                             <ArrowUpDown className="h-4 w-4" />
                           </Button>
                         </TableHead>
-                        <TableHead>
-                          <Button
-                            variant="ghost"
-                            onClick={() => handleSort("TrueLabel")}
-                            className="flex items-center gap-2"
-                          >
-                            Ground Truth
-                            <ArrowUpDown className="h-4 w-4" />
-                          </Button>
-                        </TableHead>
+                        {hasGroundTruth && (
+                          <TableHead className="text-center w-[15%]">
+                            <Button
+                              variant="ghost"
+                              onClick={() => handleSort("TrueLabel")}
+                              className="flex items-center gap-2 mx-auto"
+                            >
+                              Ground Truth
+                              <ArrowUpDown className="h-4 w-4" />
+                            </Button>
+                          </TableHead>
+                        )}
                         {analysisResult && (
                           <>
-                            <TableHead>R-GCN Prediction</TableHead>
-                            <TableHead>ERGCN Prediction</TableHead>
-                            <TableHead>Detection Status</TableHead>
-                            <TableHead>Interpret</TableHead>
+                            <TableHead className={`text-center ${!hasGroundTruth ? 'w-[25%]' : 'w-[15%]'}`}>R-GCN Prediction</TableHead>
+                            <TableHead className={`text-center ${!hasGroundTruth ? 'w-[25%]' : 'w-[15%]'}`}>ERGCN Prediction</TableHead>
+                            {hasGroundTruth && (
+                              <TableHead className="text-center w-[25%]">
+                                <div className="flex items-center justify-center gap-2">
+                                  Detection Status
+                                  <div className="relative group">
+                                    <HelpCircle className="h-4 w-4 cursor-help" />
+                                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap pointer-events-none" style={{zIndex: 9999}}>
+                                      This column detects if the model prediction is correct or not
+                                    </div>
+                                  </div>
+                                </div>
+                              </TableHead>
+                            )}
+                            <TableHead className={`text-center ${!hasGroundTruth ? 'w-[25%]' : 'w-[15%]'}`}>Confidence Details</TableHead>
                           </>
                         )}
                       </TableRow>
@@ -631,42 +673,46 @@ export default function AnalyzePage() {
                       ) : (
                         paginatedData.map((row, index) => (
                           <TableRow key={index}>
-                            <TableCell className="font-mono">{row.TransactionID}</TableCell>
-                            <TableCell>
-                              <Badge variant={row.TrueLabel === 1 ? "destructive" : "secondary"}>
-                                {row.TrueLabel === 1 ? "Fraud" : "Legitimate"}
-                              </Badge>
-                            </TableCell>
+                            <TableCell className="text-center font-mono">{row.TransactionID}</TableCell>
+                            {hasGroundTruth && (
+                              <TableCell className="text-center">
+                                <Badge variant={row.TrueLabel === 1 ? "destructive" : "secondary"}>
+                                  {row.TrueLabel === 1 ? "Fraud" : "Legitimate"}
+                                </Badge>
+                              </TableCell>
+                            )}
                             {analysisResult && (
                               <>
-                                <TableCell>
+                                <TableCell className="text-center">
                                   <Badge variant={row.RGCN === 1 ? "destructive" : "secondary"}>
                                     {row.RGCN === 1 ? "Fraud" : "Legitimate"}
                                   </Badge>
                                 </TableCell>
-                                <TableCell>
+                                <TableCell className="text-center">
                                   <Badge variant={row.ERGCN === 1 ? "destructive" : "secondary"}>
                                     {row.ERGCN === 1 ? "Fraud" : "Legitimate"}
                                   </Badge>
                                 </TableCell>
-                                <TableCell>
-                                  <div className="flex gap-1">
-                                    <Badge variant={row.RGCN === row.TrueLabel ? "default" : "outline"}>
-                                      R-GCN {row.RGCN === row.TrueLabel ? "✓" : "✗"}
-                                    </Badge>
-                                    <Badge variant={row.ERGCN === row.TrueLabel ? "default" : "outline"}>
-                                      ERGCN {row.ERGCN === row.TrueLabel ? "✓" : "✗"}
-                                    </Badge>
-                                  </div>
-                                </TableCell>
-                                <TableCell>
+                                {hasGroundTruth && (
+                                  <TableCell className="text-center">
+                                    <div className="flex gap-1 justify-center">
+                                      <Badge variant={row.RGCN === row.TrueLabel ? "secondary" : "outline"} className={row.RGCN === row.TrueLabel ? "bg-green-600 hover:bg-green-700" : ""}>
+                                        R-GCN {row.RGCN === row.TrueLabel ? "✓" : "✗"}
+                                      </Badge>
+                                      <Badge variant={row.ERGCN === row.TrueLabel ? "secondary" : "outline"} className={row.ERGCN === row.TrueLabel ? "bg-green-600 hover:bg-green-700" : ""}>
+                                        ERGCN {row.ERGCN === row.TrueLabel ? "✓" : "✗"}
+                                      </Badge>
+                                    </div>
+                                  </TableCell>
+                                )}
+                                <TableCell className="text-center">
                                   <Button
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => explainTransaction(row.TransactionID)}
-                                    className="h-8 w-8 p-0 cursor-pointer"
+                                    className="h-8 w-8 p-0 cursor-pointer hover:bg-primary/10 transition-colors"
                                   >
-                                    <Info className="h-4 w-4" />
+                                    <Expand className="h-4 w-4" />
                                   </Button>
                                 </TableCell>
                               </>
@@ -725,49 +771,150 @@ export default function AnalyzePage() {
               </Card>
             </AnimatedCard>
 
-            <AnimatedCard delay={400}>
-              <Card className="mb-8">
-                <CardHeader>
-                  <CardTitle>Statistics Overview</CardTitle>
-                  <CardDescription>Summary of fraud detection results</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className={`grid gap-4 ${analysisResult ? 'md:grid-cols-6' : 'md:grid-cols-4'}`}>
-                    <div className="rounded-lg border border-border bg-card p-4">
-                      <p className="text-sm text-muted-foreground">Total Records</p>
-                      <p className="mt-2 text-3xl font-bold">{stats.total}</p>
-                    </div>
-                    <div className="rounded-lg border border-border bg-card p-4">
-                      <p className="text-sm text-muted-foreground">Legitimate</p>
-                      <p className="mt-2 text-3xl font-bold text-green-500">{stats.legitimate}</p>
-                    </div>
-                    <div className="rounded-lg border border-border bg-card p-4">
-                      <p className="text-sm text-muted-foreground">Fraud</p>
-                      <p className="mt-2 text-3xl font-bold text-red-500">{stats.fraud}</p>
-                    </div>
-                    <div className="rounded-lg border border-border bg-card p-4">
-                      <p className="text-sm text-muted-foreground">Fraud Rate</p>
-                      <p className="mt-2 text-3xl font-bold">{stats.fraudRate}%</p>
-                    </div>
-                    {analysisResult && (
-                      <>
-                        <div className="rounded-lg border border-border bg-card p-4">
-                          <p className="text-sm text-muted-foreground">R-GCN Precision</p>
-                          <p className="mt-2 text-3xl font-bold text-blue-500">{stats.rgcnAccuracy}%</p>
+            {hasUploadedCSV && (
+              <AnimatedCard delay={400}>
+                <Card className="mb-8">
+                  <CardHeader>
+                    <CardTitle>Statistics Overview</CardTitle>
+                    <CardDescription>Summary of fraud detection results</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                  {hasGroundTruth ? (
+                    // Protocol 1: With Ground Truth - Three Column Layout
+                    <div className="space-y-6">
+                      <div className="grid gap-6 md:grid-cols-3 divide-x divide-border">
+                        {/* Ground Truth Column */}
+                        <div className="space-y-4 pr-6">
+                          <h3 className="text-lg font-semibold text-gray-300 text-center">Ground Truth</h3>
+                          <div className="space-y-3">
+                            <div className="rounded-lg border border-border bg-card p-4">
+                              <p className="text-sm text-muted-foreground">Total Records</p>
+                              <p className="mt-2 text-2xl font-bold">{stats.total}</p>
+                            </div>
+                            <div className="rounded-lg border border-border bg-card p-4">
+                              <p className="text-sm text-muted-foreground">Legitimate</p>
+                              <p className="mt-2 text-2xl font-bold text-green-500">{stats.legitimate}</p>
+                            </div>
+                            <div className="rounded-lg border border-border bg-card p-4">
+                              <p className="text-sm text-muted-foreground">Fraud</p>
+                              <p className="mt-2 text-2xl font-bold text-red-500">{stats.fraud}</p>
+                            </div>
+                            <div className="rounded-lg border border-border bg-card p-4">
+                              <p className="text-sm text-muted-foreground">Fraud Rate</p>
+                              <p className="mt-2 text-2xl font-bold">{stats.fraudRate}%</p>
+                            </div>
+                          </div>
                         </div>
+
+                        {/* R-GCN Results Column */}
+                        {analysisResult && (
+                          <div className="space-y-4 px-6">
+                            <h3 className="text-lg font-semibold text-blue-500 text-center">R-GCN Results</h3>
+                            <div className="space-y-3">
+                              <div className="rounded-lg border border-border bg-card p-4">
+                                <p className="text-sm text-muted-foreground">Precision</p>
+                                <p className="mt-2 text-2xl font-bold text-blue-500">{stats.rgcnAccuracy}%</p>
+                              </div>
+                              <div className="rounded-lg border border-border bg-card p-4">
+                                <p className="text-sm text-muted-foreground">Legitimate</p>
+                                <p className="mt-2 text-2xl font-bold text-green-500">{stats.rgcnLegitimate}</p>
+                              </div>
+                              <div className="rounded-lg border border-border bg-card p-4">
+                                <p className="text-sm text-muted-foreground">Fraud</p>
+                                <p className="mt-2 text-2xl font-bold text-red-500">{stats.rgcnFraud}</p>
+                              </div>
+                              <div className="rounded-lg border border-border bg-card p-4">
+                                <p className="text-sm text-muted-foreground">Fraud Rate</p>
+                                <p className="mt-2 text-2xl font-bold">{stats.rgcnFraudRate}%</p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* ERGCN Results Column */}
+                        {analysisResult && (
+                          <div className="space-y-4 pl-6">
+                            <h3 className="text-lg font-semibold text-purple-500 text-center">ERGCN Results</h3>
+                            <div className="space-y-3">
+                              <div className="rounded-lg border border-border bg-card p-4">
+                                <p className="text-sm text-muted-foreground">Precision</p>
+                                <p className="mt-2 text-2xl font-bold text-purple-500">{stats.ergcnAccuracy}%</p>
+                              </div>
+                              <div className="rounded-lg border border-border bg-card p-4">
+                                <p className="text-sm text-muted-foreground">Legitimate</p>
+                                <p className="mt-2 text-2xl font-bold text-green-500">{stats.ergcnLegitimate}</p>
+                              </div>
+                              <div className="rounded-lg border border-border bg-card p-4">
+                                <p className="text-sm text-muted-foreground">Fraud</p>
+                                <p className="mt-2 text-2xl font-bold text-red-500">{stats.ergcnFraud}</p>
+                              </div>
+                              <div className="rounded-lg border border-border bg-card p-4">
+                                <p className="text-sm text-muted-foreground">Fraud Rate</p>
+                                <p className="mt-2 text-2xl font-bold">{stats.ergcnFraudRate}%</p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    // Protocol 2: Without Ground Truth
+                    <div className="space-y-6">
+                      <div className="grid gap-4 md:grid-cols-1">
                         <div className="rounded-lg border border-border bg-card p-4">
-                          <p className="text-sm text-muted-foreground">ERGCN Precision</p>
-                          <p className="mt-2 text-3xl font-bold text-purple-500">{stats.ergcnAccuracy}%</p>
+                          <p className="text-sm text-muted-foreground">Total Records</p>
+                          <p className="mt-2 text-3xl font-bold">{stats.total}</p>
                         </div>
-                      </>
-                    )}
-                  </div>
+                      </div>
+                      {analysisResult && (
+                        <>
+                          <div className="grid gap-4 md:grid-cols-2">
+                            <div className="space-y-4">
+                              <h3 className="text-lg font-semibold text-blue-500">R-GCN Model Predictions</h3>
+                              <div className="grid gap-4 md:grid-cols-3">
+                                <div className="rounded-lg border border-border bg-card p-4">
+                                  <p className="text-sm text-muted-foreground">Legitimate</p>
+                                  <p className="mt-2 text-2xl font-bold text-green-500">{stats.rgcnLegitimate}</p>
+                                </div>
+                                <div className="rounded-lg border border-border bg-card p-4">
+                                  <p className="text-sm text-muted-foreground">Fraud</p>
+                                  <p className="mt-2 text-2xl font-bold text-red-500">{stats.rgcnFraud}</p>
+                                </div>
+                                <div className="rounded-lg border border-border bg-card p-4">
+                                  <p className="text-sm text-muted-foreground">Fraud Rate</p>
+                                  <p className="mt-2 text-2xl font-bold">{stats.rgcnFraudRate}%</p>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="space-y-4">
+                              <h3 className="text-lg font-semibold text-purple-500">ERGCN Model Predictions</h3>
+                              <div className="grid gap-4 md:grid-cols-3">
+                                <div className="rounded-lg border border-border bg-card p-4">
+                                  <p className="text-sm text-muted-foreground">Legitimate</p>
+                                  <p className="mt-2 text-2xl font-bold text-green-500">{stats.ergcnLegitimate}</p>
+                                </div>
+                                <div className="rounded-lg border border-border bg-card p-4">
+                                  <p className="text-sm text-muted-foreground">Fraud</p>
+                                  <p className="mt-2 text-2xl font-bold text-red-500">{stats.ergcnFraud}</p>
+                                </div>
+                                <div className="rounded-lg border border-border bg-card p-4">
+                                  <p className="text-sm text-muted-foreground">Fraud Rate</p>
+                                  <p className="mt-2 text-2xl font-bold">{stats.ergcnFraudRate}%</p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </CardContent>
-              </Card>
-            </AnimatedCard>
+                </Card>
+              </AnimatedCard>
+            )}
 
             {/* Model Evaluation Section */}
-            {analysisResult && (
+            {analysisResult && hasGroundTruth && (
               <AnimatedCard delay={600}>
                 <Card>
                   <CardHeader>

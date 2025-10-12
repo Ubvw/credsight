@@ -13,6 +13,7 @@ import ProfileCard from "@/components/ProfileCard"
 import SpotlightCard from "@/components/SpotlightCard"
 import MetallicText from "@/components/MetallicText"
 
+
 export default function Home() {
   return (
     <div className="dark min-h-screen bg-background text-foreground relative">
@@ -110,30 +111,38 @@ export default function Home() {
           </AnimatedCard>
 
           <div className="mx-auto max-w-2xl space-y-6">
-            <FeatureCard
-              icon={<Upload className="h-8 w-8" />}
-              title="CSV Data Processing"
-              description="Upload your transaction data in CSV format with TransactionID column for instant analysis and fraud detection."
-              delay={0}
-            />
-            <FeatureCard
-              icon={<Brain className="h-8 w-8" />}
-              title="ERGCN Model"
-              description="Advanced machine learning model specifically trained for fraud detection with high accuracy and low false positive rates."
-              delay={150}
-            />
-            <FeatureCard
-              icon={<BarChart3 className="h-8 w-8" />}
-              title="Quick Analysis"
-              description="Get instant fraud predictions and comprehensive statistics overview with filtering options for detailed analysis."
-              delay={300}
-            />
-            <FeatureCard
-              icon={<Shield className="h-8 w-8" />}
-              title="Statistical Insights"
-              description="Detailed statistics including fraud rates, case counts, and comprehensive data visualization for informed decisions."
-              delay={450}
-            />
+            <AnimatedCard delay={0}>
+              <FeatureCard
+                icon={<Upload className="h-8 w-8" />}
+                title="CSV Data Processing"
+                description="Upload your transaction data in CSV format with TransactionID column for instant analysis and fraud detection."
+                delay={0}
+              />
+            </AnimatedCard>
+            <AnimatedCard delay={150}>
+              <FeatureCard
+                icon={<Brain className="h-8 w-8" />}
+                title="ERGCN Model"
+                description="Advanced machine learning model specifically trained for fraud detection with high accuracy and low false positive rates."
+                delay={0}
+              />
+            </AnimatedCard>
+            <AnimatedCard delay={300}>
+              <FeatureCard
+                icon={<BarChart3 className="h-8 w-8" />}
+                title="Quick Analysis"
+                description="Get instant fraud predictions and comprehensive statistics overview with filtering options for detailed analysis."
+                delay={0}
+              />
+            </AnimatedCard>
+            <AnimatedCard delay={450}>
+              <FeatureCard
+                icon={<Shield className="h-8 w-8" />}
+                title="Statistical Insights"
+                description="Detailed statistics including fraud rates, case counts, and comprehensive data visualization for informed decisions."
+                delay={0}
+              />
+            </AnimatedCard>
           </div>
         </div>
       </section>
@@ -321,17 +330,15 @@ function FeatureCard({
   delay,
 }: { icon: React.ReactNode; title: string; description: string; delay: number }) {
   return (
-    <AnimatedCard delay={delay}>
-      <Card className="h-full border-border bg-card transition-colors hover:border-primary/50">
-        <CardHeader>
-          <div className="mb-4 inline-flex rounded-lg bg-primary/10 p-3 text-primary">{icon}</div>
-          <CardTitle className="text-xl">{title}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <CardDescription className="leading-relaxed">{description}</CardDescription>
-        </CardContent>
-      </Card>
-    </AnimatedCard>
+    <Card className="h-full border-border bg-card transition-colors hover:border-primary/50">
+      <CardHeader>
+        <div className="mb-4 inline-flex rounded-lg bg-primary/10 p-3 text-primary">{icon}</div>
+        <CardTitle className="text-xl">{title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <CardDescription className="leading-relaxed">{description}</CardDescription>
+      </CardContent>
+    </Card>
   )
 }
 

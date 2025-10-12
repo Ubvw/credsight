@@ -170,13 +170,23 @@ export default function ExplanationModal({
       <div className="bg-background border rounded-lg shadow-lg max-w-4xl max-h-[90vh] overflow-y-auto w-full mx-4">
         <div className="flex items-center justify-between p-6 border-b">
           <h2 className="text-lg font-semibold">
-            Prediction Interpretation - Transaction {transactionId}
+            Confidence Details - Transaction {transactionId}
           </h2>
           <Button variant="ghost" size="sm" onClick={onClose} className="cursor-pointer">
             <X className="h-4 w-4" />
           </Button>
         </div>
         <div className="p-6">
+          {/* Threshold Formula */}
+          <div className="mb-6 p-4 bg-muted rounded-lg">
+            <h3 className="text-sm font-semibold mb-2">Fraud Detection Formula:</h3>
+            <p className="text-sm text-muted-foreground">
+              If <span className="font-mono">Confidence ≥ Threshold</span> → <span className="text-red-500 font-medium">Fraud</span>
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              R-GCN: ≥70% | ERGCN: ≥60%
+            </p>
+          </div>
 
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
@@ -191,35 +201,7 @@ export default function ExplanationModal({
           </div>
         ) : explanationData?.explanations ? (
           <div className="w-full">
-            <div className="flex space-x-1 bg-muted p-1 rounded-lg mb-6">
-              <Button
-                variant={activeTab === "comparison" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setActiveTab("comparison")}
-                className="flex-1"
-              >
-                Comparison
-              </Button>
-              <Button
-                variant={activeTab === "rgcn" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setActiveTab("rgcn")}
-                className="flex-1"
-              >
-                R-GCN
-              </Button>
-              <Button
-                variant={activeTab === "ergcn" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setActiveTab("ergcn")}
-                className="flex-1"
-              >
-                ERGCN
-              </Button>
-            </div>
-
-            {activeTab === "comparison" && (
-              <div className="space-y-6">
+            <div className="space-y-6">
               <div className="grid gap-6 md:grid-cols-2">
                 <Card>
                   <CardHeader>
@@ -268,38 +250,32 @@ export default function ExplanationModal({
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Model Agreement</CardTitle>
+                  <CardTitle>Model Thresholds</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="flex items-center gap-2">
-                    {explanationData.explanations.rgcn?.prediction === explanationData.explanations.ergcn?.prediction ? (
-                      <>
-                        <CheckCircle className="h-5 w-5 text-green-500" />
-                        <span>Both models agree on the prediction</span>
-                      </>
-                    ) : (
-                      <>
-                        <AlertTriangle className="h-5 w-5 text-yellow-500" />
-                        <span>Models disagree - requires manual review</span>
-                      </>
-                    )}
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-blue-500 font-medium">R-GCN Threshold:</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold">70%</span>
+                        {((explanationData.explanations.rgcn?.fraud_probability || 0) * 100) >= 70 && (
+                          <Badge variant="destructive" className="text-xs">Fraud</Badge>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-purple-500 font-medium">ERGCN Threshold:</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold">60%</span>
+                        {((explanationData.explanations.ergcn?.fraud_probability || 0) * 100) >= 60 && (
+                          <Badge variant="destructive" className="text-xs">Fraud</Badge>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
-              </div>
-            )}
-
-            {activeTab === "rgcn" && (
-              <div>
-                {renderModelExplanation(explanationData.explanations?.rgcn, "R-GCN")}
-              </div>
-            )}
-
-            {activeTab === "ergcn" && (
-              <div>
-                {renderModelExplanation(explanationData.explanations?.ergcn, "ERGCN")}
-              </div>
-            )}
+            </div>
           </div>
         ) : (
           <div className="text-center py-12">
