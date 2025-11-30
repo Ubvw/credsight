@@ -626,7 +626,7 @@ export default function AnalyzePage() {
                       <SelectTrigger className="w-[180px]">
                         <SelectValue placeholder="Filter by..." />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="bg-white dark:bg-white text-black">
                         <SelectItem value="all">Show All</SelectItem>
                         {hasGroundTruth && (
                           <>
@@ -703,24 +703,21 @@ export default function AnalyzePage() {
                         )}
                         {analysisResult && (
                           <>
-                            <TableHead className={`text-center ${!hasGroundTruth ? 'w-[25%]' : 'w-[15%]'}`}>R-GCN Prediction</TableHead>
-                            <TableHead className={`text-center ${!hasGroundTruth ? 'w-[25%]' : 'w-[15%]'}`}>ERGCN Prediction</TableHead>
+                            <TableHead className="text-center whitespace-nowrap">ERGCN</TableHead>
+                            <TableHead className="text-center whitespace-nowrap">R-GCN</TableHead>
                             {hasGroundTruth && (
-                              <TableHead className="text-center w-[25%]">
+                              <TableHead className="text-center whitespace-nowrap">
                                 <div className="flex items-center justify-center gap-2">
-                                  Detection Status
+                                  Status
                                   <div className="relative group">
                                     <HelpCircle className="h-4 w-4 cursor-help" />
-                                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap pointer-events-none" style={{zIndex: 9999}}>
-                                      This column detects if the model prediction is correct or not
+                                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap pointer-events-none z-50">
+                                      Model prediction accuracy
                                     </div>
                                   </div>
                                 </div>
                               </TableHead>
                             )}
-                            <TableHead className={`text-center ${!hasGroundTruth ? 'w-[25%]' : 'w-[15%]'}`}>
-                              Confidence Details
-                            </TableHead>
                           </>
                         )}
                       </TableRow>
@@ -746,37 +743,27 @@ export default function AnalyzePage() {
                             {analysisResult && (
                               <>
                                 <TableCell className="text-center">
-                                  <Badge variant={row.RGCN === 1 ? "destructive" : "secondary"}>
-                                    {row.RGCN === 1 ? "Fraud" : "Legitimate"}
+                                  <Badge variant={row.ERGCN === 1 ? "destructive" : "secondary"}>
+                                    {row.ERGCN === 1 ? "Fraud" : "Legitimate"}
                                   </Badge>
                                 </TableCell>
                                 <TableCell className="text-center">
-                                  <Badge variant={row.ERGCN === 1 ? "destructive" : "secondary"}>
-                                    {row.ERGCN === 1 ? "Fraud" : "Legitimate"}
+                                  <Badge variant={row.RGCN === 1 ? "destructive" : "secondary"}>
+                                    {row.RGCN === 1 ? "Fraud" : "Legitimate"}
                                   </Badge>
                                 </TableCell>
                                 {hasGroundTruth && (
                                   <TableCell className="text-center">
                                     <div className="flex gap-1 justify-center">
-                                      <Badge variant={row.RGCN === row.TrueLabel ? "secondary" : "outline"} className={row.RGCN === row.TrueLabel ? "bg-green-600 hover:bg-green-700" : ""}>
+                                      <Badge variant={row.RGCN === row.TrueLabel ? "secondary" : "destructive"} className={row.RGCN === row.TrueLabel ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"}>
                                         R-GCN {row.RGCN === row.TrueLabel ? "✓" : "✗"}
                                       </Badge>
-                                      <Badge variant={row.ERGCN === row.TrueLabel ? "secondary" : "outline"} className={row.ERGCN === row.TrueLabel ? "bg-green-600 hover:bg-green-700" : ""}>
+                                      <Badge variant={row.ERGCN === row.TrueLabel ? "secondary" : "destructive"} className={row.ERGCN === row.TrueLabel ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"}>
                                         ERGCN {row.ERGCN === row.TrueLabel ? "✓" : "✗"}
                                       </Badge>
                                     </div>
                                   </TableCell>
                                 )}
-                                <TableCell className="text-center">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-      onClick={() => explainTransaction(row)}
-                                    className="h-8 w-8 p-0 cursor-pointer hover:bg-primary/10 transition-colors"
-                                  >
-                                    <Expand className="h-4 w-4" />
-                                  </Button>
-                                </TableCell>
                               </>
                             )}
                           </TableRow>
@@ -868,30 +855,9 @@ export default function AnalyzePage() {
                           </div>
                         </div>
 
-                        {/* R-GCN Results Column */}
-                        {analysisResult && (
-                          <div className="space-y-4 px-6">
-                            <h3 className="text-lg font-semibold text-blue-500 text-center">R-GCN Predictions</h3>
-                            <div className="space-y-3">
-                              <div className="rounded-lg border border-border bg-card p-4">
-                                <p className="text-sm text-muted-foreground">Predicted Legitimate</p>
-                                <p className="mt-2 text-2xl font-bold text-green-500">{stats.rgcnLegitimate}</p>
-                              </div>
-                              <div className="rounded-lg border border-border bg-card p-4">
-                                <p className="text-sm text-muted-foreground">Predicted Fraud</p>
-                                <p className="mt-2 text-2xl font-bold text-red-500">{stats.rgcnFraud}</p>
-                              </div>
-                              <div className="rounded-lg border border-border bg-card p-4">
-                                <p className="text-sm text-muted-foreground">Predicted Fraud Rate</p>
-                                <p className="mt-2 text-2xl font-bold">{stats.rgcnFraudRate}%</p>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
                         {/* ERGCN Results Column */}
                         {analysisResult && (
-                          <div className="space-y-4 pl-6">
+                          <div className="space-y-4 px-6">
                             <h3 className="text-lg font-semibold text-purple-500 text-center">ERGCN Predictions</h3>
                             <div className="space-y-3">
                               <div className="rounded-lg border border-border bg-card p-4">
@@ -905,6 +871,27 @@ export default function AnalyzePage() {
                               <div className="rounded-lg border border-border bg-card p-4">
                                 <p className="text-sm text-muted-foreground">Predicted Fraud Rate</p>
                                 <p className="mt-2 text-2xl font-bold">{stats.ergcnFraudRate}%</p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* R-GCN Results Column */}
+                        {analysisResult && (
+                          <div className="space-y-4 pl-6">
+                            <h3 className="text-lg font-semibold text-blue-500 text-center">R-GCN Predictions</h3>
+                            <div className="space-y-3">
+                              <div className="rounded-lg border border-border bg-card p-4">
+                                <p className="text-sm text-muted-foreground">Predicted Legitimate</p>
+                                <p className="mt-2 text-2xl font-bold text-green-500">{stats.rgcnLegitimate}</p>
+                              </div>
+                              <div className="rounded-lg border border-border bg-card p-4">
+                                <p className="text-sm text-muted-foreground">Predicted Fraud</p>
+                                <p className="mt-2 text-2xl font-bold text-red-500">{stats.rgcnFraud}</p>
+                              </div>
+                              <div className="rounded-lg border border-border bg-card p-4">
+                                <p className="text-sm text-muted-foreground">Predicted Fraud Rate</p>
+                                <p className="mt-2 text-2xl font-bold">{stats.rgcnFraudRate}%</p>
                               </div>
                             </div>
                           </div>
@@ -925,23 +912,6 @@ export default function AnalyzePage() {
                         <>
                           <div className="grid gap-4 md:grid-cols-2">
                             <div className="space-y-4">
-                              <h3 className="text-lg font-semibold text-blue-500">R-GCN Model Predictions</h3>
-                              <div className="grid gap-4 md:grid-cols-3">
-                                <div className="rounded-lg border border-border bg-card p-4">
-                                  <p className="text-sm text-muted-foreground">Legitimate</p>
-                                  <p className="mt-2 text-2xl font-bold text-green-500">{stats.rgcnLegitimate}</p>
-                                </div>
-                                <div className="rounded-lg border border-border bg-card p-4">
-                                  <p className="text-sm text-muted-foreground">Fraud</p>
-                                  <p className="mt-2 text-2xl font-bold text-red-500">{stats.rgcnFraud}</p>
-                                </div>
-                                <div className="rounded-lg border border-border bg-card p-4">
-                                  <p className="text-sm text-muted-foreground">Fraud Rate</p>
-                                  <p className="mt-2 text-2xl font-bold">{stats.rgcnFraudRate}%</p>
-                                </div>
-                              </div>
-                            </div>
-                            <div className="space-y-4">
                               <h3 className="text-lg font-semibold text-purple-500">ERGCN Model Predictions</h3>
                               <div className="grid gap-4 md:grid-cols-3">
                                 <div className="rounded-lg border border-border bg-card p-4">
@@ -955,6 +925,23 @@ export default function AnalyzePage() {
                                 <div className="rounded-lg border border-border bg-card p-4">
                                   <p className="text-sm text-muted-foreground">Fraud Rate</p>
                                   <p className="mt-2 text-2xl font-bold">{stats.ergcnFraudRate}%</p>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="space-y-4">
+                              <h3 className="text-lg font-semibold text-blue-500">R-GCN Model Predictions</h3>
+                              <div className="grid gap-4 md:grid-cols-3">
+                                <div className="rounded-lg border border-border bg-card p-4">
+                                  <p className="text-sm text-muted-foreground">Legitimate</p>
+                                  <p className="mt-2 text-2xl font-bold text-green-500">{stats.rgcnLegitimate}</p>
+                                </div>
+                                <div className="rounded-lg border border-border bg-card p-4">
+                                  <p className="text-sm text-muted-foreground">Fraud</p>
+                                  <p className="mt-2 text-2xl font-bold text-red-500">{stats.rgcnFraud}</p>
+                                </div>
+                                <div className="rounded-lg border border-border bg-card p-4">
+                                  <p className="text-sm text-muted-foreground">Fraud Rate</p>
+                                  <p className="mt-2 text-2xl font-bold">{stats.rgcnFraudRate}%</p>
                                 </div>
                               </div>
                             </div>
@@ -986,24 +973,6 @@ export default function AnalyzePage() {
                   <CardContent>
                     <div className="grid gap-6 md:grid-cols-2">
                       <div className="space-y-4">
-                        <h3 className="text-lg font-semibold text-blue-500">R-GCN Model</h3>
-                        <div className="grid gap-3">
-                          <div className="flex justify-between items-center p-3 bg-card rounded-lg border">
-                            <span className="text-sm text-muted-foreground">Recall</span>
-                          <span className="font-bold">{formatMetricPercentage(analysisResult.metrics.RGCN.recall)}</span>
-                          </div>
-                          <div className="flex justify-between items-center p-3 bg-card rounded-lg border">
-                            <span className="text-sm text-muted-foreground">F1 Score</span>
-                          <span className="font-bold">{formatMetricPercentage(analysisResult.metrics.RGCN.f1)}</span>
-                          </div>
-                          <div className="flex justify-between items-center p-3 bg-card rounded-lg border">
-                            <span className="text-sm text-muted-foreground">AUC</span>
-                          <span className="font-bold">{formatMetricPercentage(analysisResult.metrics.RGCN.auc)}</span>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-4">
                         <h3 className="text-lg font-semibold text-purple-500">ERGCN Model</h3>
                         <div className="grid gap-3">
                           <div className="flex justify-between items-center p-3 bg-card rounded-lg border">
@@ -1017,6 +986,24 @@ export default function AnalyzePage() {
                           <div className="flex justify-between items-center p-3 bg-card rounded-lg border">
                             <span className="text-sm text-muted-foreground">AUC</span>
                             <span className="font-bold">{formatMetricPercentage(analysisResult.metrics.ERGCN?.auc)}</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-4">
+                        <h3 className="text-lg font-semibold text-blue-500">R-GCN Model</h3>
+                        <div className="grid gap-3">
+                          <div className="flex justify-between items-center p-3 bg-card rounded-lg border">
+                            <span className="text-sm text-muted-foreground">Recall</span>
+                          <span className="font-bold">{formatMetricPercentage(analysisResult.metrics.RGCN.recall)}</span>
+                          </div>
+                          <div className="flex justify-between items-center p-3 bg-card rounded-lg border">
+                            <span className="text-sm text-muted-foreground">F1 Score</span>
+                          <span className="font-bold">{formatMetricPercentage(analysisResult.metrics.RGCN.f1)}</span>
+                          </div>
+                          <div className="flex justify-between items-center p-3 bg-card rounded-lg border">
+                            <span className="text-sm text-muted-foreground">AUC</span>
+                          <span className="font-bold">{formatMetricPercentage(analysisResult.metrics.RGCN.auc)}</span>
                           </div>
                         </div>
                       </div>
