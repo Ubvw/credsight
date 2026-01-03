@@ -948,7 +948,7 @@ export default function AnalyzePage() {
             {/* Model Evaluation Section */}
             {showPerformanceComparison && (
               <AnimatedCard delay={600}>
-                <Card>
+                <Card className="mb-8">
                   <CardHeader>
                     <CardTitle>Model Performance Comparison</CardTitle>
                     <CardDescription>
@@ -1038,7 +1038,7 @@ export default function AnalyzePage() {
             {/* Confusion Matrix Section */}
             {showConfusionMatrices && (
               <AnimatedCard delay={700}>
-                <Card>
+                <Card className="mb-8">
                   <CardHeader>
                     <CardTitle>Confusion Matrices</CardTitle>
                     <CardDescription>
