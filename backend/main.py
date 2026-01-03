@@ -279,7 +279,13 @@ async def analyze_transactions_endpoint(file: UploadFile = File(...)):
                 "legitimate_detected_by_ERGCN": ergcn_legitimate_count,
                 "fraud_rate_of_ERGCN": float(ergcn_fraud_rate)
             },
-            "confusion_matrices": confusion_matrices
+            "confusion_matrices": confusion_matrices,
+            "mcnemar": {
+                "p_value": float(p),
+                "chi2": float(chi2),
+                "is_significant": bool(0.0 < p < 0.05),
+                "contingency_table": tb.tolist()
+            }
         }
         
         # Debug: Print confusion matrices before creating result
