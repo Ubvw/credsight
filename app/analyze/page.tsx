@@ -68,6 +68,12 @@ type AnalysisResult = {
 
 type FilterType = "all" | "legit" | "fraud" | "both_correct" | "both_incorrect" | "rgcn_correct" | "ergcn_correct" | "rgcn_incorrect" | "ergcn_incorrect" | "rgcn_fraud" | "rgcn_legit" | "ergcn_fraud" | "ergcn_legit"
 
+const formatPValue = (p) => {
+  if (p === null || p === undefined) return "N/A";
+  if (p < 0.001) return p.toExponential(4); 
+  return p.toFixed(4); 
+};
+
 export default function AnalyzePage() {
   const [data, setData] = useState<TransactionData[]>([])
   const [filteredData, setFilteredData] = useState<TransactionData[]>([])
@@ -953,11 +959,6 @@ export default function AnalyzePage() {
                     <CardTitle>Model Performance Comparison</CardTitle>
                     <CardDescription>
                       Comparative analysis of R-GCN vs ERGCN models
-                      {metrics?.p_value !== undefined && metrics.p_value < 0.05 && (
-                        <span className="ml-2 text-green-600 font-semibold">
-                          (Statistically Significant, p = {metrics.p_value.toFixed(4)})
-                        </span>
-                      )}
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -1112,6 +1113,71 @@ export default function AnalyzePage() {
                           </div>
                         </div>
                       )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </AnimatedCard>
+            )}
+
+            {/* McNemar Test Section */}
+            {metrics?.mcnemar && (
+              <AnimatedCard delay={800}>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      Statistical Significance (McNemar's Test)
+                      {metrics.mcnemar.is_significant ? (
+                        <span className="text-xs bg-green-500 text-white px-2 py-1 rounded-full">Significant</span>
+                      ) : (
+                        <span className="text-xs bg-gray-500 text-white px-2 py-1 rounded-full">Not Significant</span>
+                      )}
+                    </CardTitle>
+                    <CardDescription>
+                      Comparing prediction consistency between R-GCN and ERGCN
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid md:grid-cols-2 gap-8 items-center">
+                      {/* The Table */}
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium text-muted-foreground mb-4">Contingency Table</p>
+                        <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                          <div className=""></div>
+                          <div className="font-bold">ERGCN Correct</div>
+                          <div className="font-bold">ERGCN Wrong</div>
+                          
+                          <div className="font-bold flex items-center justify-end pr-2">R-GCN Correct</div>
+                          <div className="bg-card border p-4 rounded-md">
+                            {metrics.mcnemar.contingency_table[0][0]}
+                          </div>
+                          <div className="bg-card border p-4 rounded-md">
+                            {metrics.mcnemar.contingency_table[0][1]}
+                          </div>
+            
+                          <div className="font-bold flex items-center justify-end pr-2">R-GCN Wrong</div>
+                          <div className="bg-card border p-4 rounded-md">
+                            {metrics.mcnemar.contingency_table[1][0]}
+                          </div>
+                          <div className="bg-card border p-4 rounded-md">
+                            {metrics.mcnemar.contingency_table[1][1]}
+                          </div>
+                        </div>
+                      </div>
+            
+                      {/* Results Summary */}
+                      <div className="flex flex-col justify-center space-y-4">
+                        <div className="p-4 bg-background rounded-xl border border-border">
+                          <p className="text-sm text-muted-foreground">P-Value</p>
+                          <p className={`text-3xl font-mono font-bold ${metrics.mcnemar.is_significant ? 'text-green-500' : 'text-yellow-500'}`}>
+                            {formatPValue(metrics.mcnemar.p_value)}
+                          </p>
+                        </div>
+                        <p className="text-sm text-muted-foreground italic">
+                          {metrics.mcnemar.is_significant 
+                            ? "The difference in performance between the two models is statistically significant."
+                            : "There is no statistically significant difference in how these models perform."}
+                        </p>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
