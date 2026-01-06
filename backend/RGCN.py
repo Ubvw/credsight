@@ -297,6 +297,8 @@ def analyze_transactions(csv_data: str, model_path: str = DEFAULT_MODEL_PATH):
     # Return results in the format expected by the API
     results = {
         'transactions': predictions_df.to_dict('records'),
+        'test_labels': test_labels.astype(int),
+        'test_preds': test_preds.astype(int),
         'confusion_matrix': cm,
         'metrics': {
             'loss': test_loss,

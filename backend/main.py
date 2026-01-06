@@ -11,6 +11,8 @@ from basemodels import AnalysisResult
 from RGCN import analyze_transactions as analyze_transactions_rgcn
 from ERGCN import analyze_transactions as analyze_transactions_ergcn
 
+from mlxtend.evaluate import mcnemar_table, mcnemar
+
 app = FastAPI(title="Credsight API")
 
 app.add_middleware(
@@ -224,6 +226,22 @@ async def analyze_transactions_endpoint(file: UploadFile = File(...)):
             "RGCN": convert_confusion_matrix(rgcn_cm),
             "ERGCN": convert_confusion_matrix(ergcn_cm)
         }
+
+        # Conduct McNemar Test
+        test_labels = rgcn_results.get('test_labels')
+        rgcn_preds = rgcn_results.get('test_preds')
+        ergcn_preds = ergcn_results.get('test_preds')
+
+        tb = mcnemar_table(y_target=test_labels, y_model1=rgcn_preds, y_model2=ergcn_preds)
+        print(f"McNemar Table\n{tb}")
+        chi2, p = mcnemar(ary=tb, corrected=True)
+
+        print(f"chi-squared: {chi2}, p-value: {p}")
+        if 0.0 < p < 0.05:
+            print("Difference is Statistically Significant")
+        else:
+            print("No Significant Difference found")
+
         
         # Calculate ERGCN summary statistics from processed transactions
         # Note: These counts may differ from model results if transactions were filtered
@@ -261,7 +279,13 @@ async def analyze_transactions_endpoint(file: UploadFile = File(...)):
                 "legitimate_detected_by_ERGCN": ergcn_legitimate_count,
                 "fraud_rate_of_ERGCN": float(ergcn_fraud_rate)
             },
-            "confusion_matrices": confusion_matrices
+            "confusion_matrices": confusion_matrices,
+            "mcnemar": {
+                "p_value": float(p),
+                "chi2": float(chi2),
+                "is_significant": bool(0.0 < p < 0.05),
+                "contingency_table": tb.tolist()
+            }
         }
         
         # Debug: Print confusion matrices before creating result
